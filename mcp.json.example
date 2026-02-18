@@ -1,0 +1,16 @@
+{
+  "name": "evawiki",
+  "version": "1.0.0",
+  "description": "EVA Wiki MCP server",
+  "servers": {
+    "stdio": {
+      "command": "python",
+      "args": ["-m", "evawiki_mcp.server"],
+      "env": {
+        "EVAWIKI_API_URL": "https://eva.example.com/api/",
+        "EVAWIKI_API_TOKEN": "YOUR_TOKEN_HERE",
+        "EVAWIKI_VERIFY_SSL": "false"
+      }
+    }
+  }
+}
