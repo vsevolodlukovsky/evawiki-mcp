@@ -113,7 +113,9 @@ class EvaWikiClient:
 
         error = data.get("error")
         if error:
-            raise EvaApiError(method=method, code=error.get("code"), message=error.get("message", ""))
+            raise EvaApiError(
+                method=method, code=error.get("code"), message=error.get("message", "")
+            )
 
         return data
 

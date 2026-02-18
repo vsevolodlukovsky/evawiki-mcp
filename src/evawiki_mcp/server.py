@@ -116,7 +116,7 @@ def evawiki_list_documents(
                         raise RuntimeError(f"filter_json: invalid JSON: {s[:50]}...")
                 else:
                     # Simple format: field,op,value → ["field","op","value"]
-                    parts = [p.strip().strip('"\'') for p in s.split(",", 2)]
+                    parts = [p.strip().strip("\"'") for p in s.split(",", 2)]
                     if len(parts) >= 3:
                         kwargs["filter"] = parts
         effective_fields = ["code", "name"]

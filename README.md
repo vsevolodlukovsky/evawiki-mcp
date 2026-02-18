@@ -3,6 +3,62 @@
 MCP server for integration with EVA Wiki / EVA Team via their JSON-RPC 2.2 API (`/api/`).
 Implemented in Python using the official `mcp` Python SDK.
 
+## Quickstart
+
+### Install
+
+```bash
+pipx install evawiki-mcp
+```
+
+Или: `pip install evawiki-mcp`, либо из репозитория:
+
+```bash
+pip install git+https://github.com/vsevolodlukovsky/evawiki-mcp.git
+pipx install git+https://github.com/vsevolodlukovsky/evawiki-mcp.git
+```
+
+### Run
+
+Проверка работы:
+
+```bash
+evawiki-mcp --help
+evawiki-mcp
+```
+
+Без аргументов сервер запускается в stdio-режиме для MCP-клиента.
+
+### Config for MCP client
+
+В настройках MCP (Cursor и др.) укажите команду `evawiki-mcp` и переменные окружения. Пример см. в [examples/mcp.json](examples/mcp.json).
+
+```json
+{
+  "mcpServers": {
+    "evawiki": {
+      "command": "evawiki-mcp",
+      "env": {
+        "EVAWIKI_API_URL": "https://eva.example.com/api/",
+        "EVAWIKI_API_TOKEN": "YOUR_TOKEN",
+        "EVAWIKI_VERIFY_SSL": "false"
+      }
+    }
+  }
+}
+```
+
+Альтернатива (без установки пакета): `"command": "python", "args": ["-m", "evawiki_mcp.server"]` и те же `env`.
+
+### Troubleshooting
+
+- **Python:** требуется 3.10+.
+- **Команда не найдена:** после `pipx install` или `pip install` убедитесь, что `evawiki-mcp` в PATH (перезапустите терминал или проверьте `pipx ensurepath`).
+- **EVAWIKI_API_URL / EVAWIKI_API_TOKEN не заданы:** сервер при первом вызове инструмента вернёт ошибку — задайте переменные в конфиге клиента.
+- **Stdio:** сервер общается через stdin/stdout; не запускайте его в интерактивном режиме с вводом в консоль.
+
+---
+
 ## Features
 
 - Read documents/articles by code (`CmfDocument.get`).
@@ -14,12 +70,14 @@ Implemented in Python using the official `mcp` Python SDK.
 - Raw EVA API call (`evawiki_raw_call`).
 - Ping to check API availability and token validity (`evawiki_ping`).
 
-## Installation
+## Installation (from source)
 
 ```bash
+git clone https://github.com/vsevolodlukovsky/evawiki-mcp.git
+cd evawiki-mcp
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -e ".[dev]"
 ```
 
 ## Configuration (environment variables)
@@ -33,7 +91,7 @@ The server reads connection parameters from environment:
 
 ## MCP client config (Cursor / OpenAI Agents)
 
-Copy `mcp.json.example` to `mcp.json` and fill in your URL and token. `mcp.json` is gitignored (contains secrets).
+Use `evawiki-mcp` as command, or copy [examples/mcp.json](examples/mcp.json) and fill in your URL and token.
 
 Example `mcpServers` block:
 
@@ -41,8 +99,7 @@ Example `mcpServers` block:
 {
   "mcpServers": {
     "evawiki": {
-      "command": "python",
-      "args": ["-m", "evawiki_mcp.server"],
+      "command": "evawiki-mcp",
       "env": {
         "EVAWIKI_API_URL": "https://eva.example.com/api/",
         "EVAWIKI_API_TOKEN": "YOUR_TOKEN",
@@ -55,8 +112,8 @@ Example `mcpServers` block:
 
 ## Code structure
 
-- `evawiki_mcp/evawiki_client.py` — low-level EVA client (`EvaWikiClient`) over JSON-RPC 2.2.
-- `evawiki_mcp/server.py` — MCP server (FastMCP) with tools:
+- `src/evawiki_mcp/evawiki_client.py` — low-level EVA client (`EvaWikiClient`) over JSON-RPC 2.2.
+- `src/evawiki_mcp/server.py` — MCP server (FastMCP) with tools:
   - `evawiki_get_document_by_code`
   - `evawiki_get_document_text`
   - `evawiki_list_documents` / search by name
@@ -94,10 +151,11 @@ MCP‑сервер для интеграции с EVA Wiki/EVA Team через �
 ## Установка
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pipx install evawiki-mcp
+# или: pip install git+https://github.com/vsevolodlukovsky/evawiki-mcp.git
 ```
+
+Из исходников: клонировать репозиторий, `pip install -e ".[dev]"`.
 
 ## Конфигурация (переменные окружения)
 
@@ -110,27 +168,9 @@ pip install -r requirements.txt
 
 ## Пример client‑конфига MCP (Cursor / OpenAI Agents)
 
-Скопируйте `mcp.json.example` в `mcp.json` и подставьте свои URL и токен. Файл `mcp.json` не попадает в git (содержит секреты).
-
-Ниже пример блока `mcpServers`:
-
-```json
-{
-  "mcpServers": {
-    "evawiki": {
-      "command": "python",
-      "args": ["-m", "evawiki_mcp.server"],
-      "env": {
-        "EVAWIKI_API_URL": "https://eva.example.com/api/",
-        "EVAWIKI_API_TOKEN": "ВАШ_ТОКЕН",
-        "EVAWIKI_VERIFY_SSL": "false"
-      }
-    }
-  }
-}
-```
+Используйте команду `evawiki-mcp` и переменные окружения. Пример в [examples/mcp.json](examples/mcp.json).
 
 ## Структура кода
 
-- `evawiki_mcp/evawiki_client.py` — низкоуровневый клиент EVA (`EvaWikiClient`) поверх JSON-RPC 2.2.
-- `evawiki_mcp/server.py` — MCP‑сервер на базе `FastMCP` с инструментами (см. выше).
+- `src/evawiki_mcp/evawiki_client.py` — низкоуровневый клиент EVA (`EvaWikiClient`) поверх JSON-RPC 2.2.
+- `src/evawiki_mcp/server.py` — MCP‑сервер на базе `FastMCP` с инструментами (см. выше).

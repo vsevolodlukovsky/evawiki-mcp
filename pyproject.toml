@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evawiki-mcp"
+version = "0.1.0"
+description = "MCP server for EVA Wiki / EVA Team"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "mcp>=1.26.0",
+    "requests>=2.31.0",
+]
+
+[project.scripts]
+evawiki-mcp = "evawiki_mcp.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+exclude = ["build", ".git"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

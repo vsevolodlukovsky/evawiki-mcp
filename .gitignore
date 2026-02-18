@@ -1,5 +1,6 @@
 # Локальная конфигурация с токеном (не публиковать!)
 mcp.json
+!examples/mcp.json
 
 # Python
 __pycache__/
