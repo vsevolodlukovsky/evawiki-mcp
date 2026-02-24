@@ -11,7 +11,7 @@ Implemented in Python using the official `mcp` Python SDK.
 pipx install evawiki-mcp
 ```
 
-Или: `pip install evawiki-mcp`, либо из репозитория:
+Or: `pip install evawiki-mcp`, or install from GitHub:
 
 ```bash
 pip install git+https://github.com/vsevolodlukovsky/evawiki-mcp.git
@@ -20,18 +20,18 @@ pipx install git+https://github.com/vsevolodlukovsky/evawiki-mcp.git
 
 ### Run
 
-Проверка работы:
+Verify it runs:
 
 ```bash
 evawiki-mcp --help
 evawiki-mcp
 ```
 
-Без аргументов сервер запускается в stdio-режиме для MCP-клиента.
+Without arguments the server runs in stdio mode for an MCP client.
 
 ### Config for MCP client
 
-В настройках MCP (Cursor и др.) укажите команду `evawiki-mcp` и переменные окружения. Пример см. в [examples/mcp.json](examples/mcp.json).
+In your MCP client (Cursor, etc.) configure the `evawiki-mcp` command and environment variables. See [examples/mcp.json](examples/mcp.json) for a template.
 
 ```json
 {
@@ -48,14 +48,14 @@ evawiki-mcp
 }
 ```
 
-Альтернатива (без установки пакета): `"command": "python", "args": ["-m", "evawiki_mcp.server"]` и те же `env`.
+Alternative (without installing the package): `"command": "python", "args": ["-m", "evawiki_mcp.server"]` with the same `env`.
 
 ### Troubleshooting
 
-- **Python:** требуется 3.10+.
-- **Команда не найдена:** после `pipx install` или `pip install` убедитесь, что `evawiki-mcp` в PATH (перезапустите терминал или проверьте `pipx ensurepath`).
-- **EVAWIKI_API_URL / EVAWIKI_API_TOKEN не заданы:** сервер при первом вызове инструмента вернёт ошибку — задайте переменные в конфиге клиента.
-- **Stdio:** сервер общается через stdin/stdout; не запускайте его в интерактивном режиме с вводом в консоль.
+- **Python:** requires 3.10+.
+- **Command not found:** after `pipx install` or `pip install`, make sure `evawiki-mcp` is on PATH (restart the terminal or run `pipx ensurepath`).
+- **EVAWIKI_API_URL / EVAWIKI_API_TOKEN missing:** the server will fail on the first tool call if they are not set — configure them in your MCP client.
+- **Stdio:** the server communicates over stdin/stdout; do not run it interactively and type into the same terminal.
 
 ---
 
