@@ -240,6 +240,50 @@ class EvaWikiClient:
 
         return _fetch_children(None, 0)
 
+    def get_wiki_parent(
+        self,
+        node_id: str,
+        fields: Optional[List[str]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Find the wiki tree parent of *node_id* using tree_nodes.id reverse lookup.
+
+        Uses filter ["tree_nodes.id", "==", node_id] which returns the document
+        that has node_id in its tree_nodes (i.e. its wiki tree children).
+        Returns None if the node is a root (no wiki parent).
+        """
+        f = fields or ["code", "name", "id", "project_id"]
+        data = self.call(
+            "CmfDocument.list",
+            kwargs={"slice": [0, 1], "filter": ["tree_nodes.id", "==", node_id]},
+            fields=f,
+            no_meta=True,
+        )
+        results = data.get("result") or []
+        return results[0] if results else None
+
+    def get_wiki_breadcrumb(self, node_id: str) -> List[Dict[str, Any]]:
+        """
+        Build wiki navigation breadcrumb by walking tree_nodes.id chain upward.
+
+        Returns list from root to the node's immediate parent:
+        [{id, code, name, project_id}, ...]
+        """
+        crumbs: List[Dict[str, Any]] = []
+        visited: set = set()
+        current_id = node_id
+
+        while current_id and current_id not in visited:
+            visited.add(current_id)
+            parent = self.get_wiki_parent(current_id)
+            if not parent:
+                break
+            crumbs.append(parent)
+            current_id = parent.get("id", "")
+
+        crumbs.reverse()
+        return crumbs
+
     def get_breadcrumb(self, node_id: str) -> List[Dict[str, str]]:
         """
         Walk parent_id chain upward to build breadcrumb list (root → leaf).

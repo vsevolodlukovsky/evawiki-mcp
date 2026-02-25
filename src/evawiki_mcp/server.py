@@ -437,6 +437,25 @@ def evawiki_get_section(code: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
+def evawiki_get_wiki_parent(node_id: str) -> Dict[str, Any]:
+    """
+    Get the wiki tree parent of a node.
+
+    Uses tree_nodes.id reverse lookup to find the document that has
+    node_id as its wiki child — works even when parent_id == project_id.
+
+    node_id — full entity id, e.g. "CmfDocument:uuid...".
+    Returns {parent: {id, code, name, project_id}} or {parent: null} if root node.
+    """
+    client = get_client()
+    try:
+        parent = client.get_wiki_parent(node_id)
+        return {"node_id": node_id, "parent": parent}
+    except EvaApiError as exc:
+        _handle_eva_error(exc)
+
+
+@mcp.tool()
 def evawiki_get_wiki_children(
     node_id: str,
     project_code: Optional[str] = None,
@@ -517,17 +536,15 @@ def evawiki_move_document(doc_code: str, target_parent_id: str) -> Dict[str, Any
 @mcp.tool()
 def evawiki_get_document_with_context(code: str) -> Dict[str, Any]:
     """
-    Get document together with its breadcrumb path and sibling documents.
+    Get document together with breadcrumb paths and sibling documents.
 
     Returns:
     - document: basic document fields
-    - breadcrumb: list from root project down to the document's parent
-    - siblings: other documents/folders sharing the same parent
-
-    Note: breadcrumb and siblings use the EVA object hierarchy (parent_id).
-    The wiki navigation tree uses tree_parent_id, which is not retrievable
-    via the API (filter-only field). Use evawiki_get_wiki_children for
-    true wiki tree traversal.
+    - wiki_breadcrumb: breadcrumb via true wiki navigation tree (tree_nodes.id lookup)
+    - wiki_siblings: sibling documents in the same wiki tree parent node
+    - breadcrumb: breadcrumb via EVA object hierarchy (parent_id) — may differ
+    - sibling_documents: siblings via EVA object hierarchy (parent_id)
+    - sibling_folders: sibling folders via EVA object hierarchy (parent_id)
     """
     client = get_client()
     try:
@@ -540,9 +557,19 @@ def evawiki_get_document_with_context(code: str) -> Dict[str, Any]:
         if not doc:
             raise RuntimeError(f"Document with code {code} not found")
 
+        doc_id = doc["id"]
         parent_id = doc.get("parent_id", "")
-        breadcrumb = client.get_breadcrumb(parent_id) if parent_id else []
 
+        # Wiki tree breadcrumb and siblings via tree_nodes.id reverse lookup
+        wiki_breadcrumb = client.get_wiki_breadcrumb(doc_id)
+        wiki_parent = wiki_breadcrumb[-1] if wiki_breadcrumb else None
+        wiki_siblings = client.list_wiki_children(
+            wiki_parent["id"], fields=["code", "name", "id"]
+        ) if wiki_parent else []
+        wiki_siblings_filtered = [s for s in wiki_siblings if s.get("id") != doc_id]
+
+        # EVA object hierarchy breadcrumb and siblings (legacy)
+        breadcrumb = client.get_breadcrumb(parent_id) if parent_id else []
         siblings_docs = client._list_all(
             "CmfDocument.list",
             ["code", "name", "id"],
@@ -553,11 +580,12 @@ def evawiki_get_document_with_context(code: str) -> Dict[str, Any]:
             ["code", "name", "id"],
             extra_filter=["parent_id", "==", parent_id],
         ) if parent_id else []
-
-        sibling_docs_filtered = [s for s in siblings_docs if s.get("id") != doc["id"]]
+        sibling_docs_filtered = [s for s in siblings_docs if s.get("id") != doc_id]
 
         return {
             "document": doc,
+            "wiki_breadcrumb": wiki_breadcrumb,
+            "wiki_siblings": wiki_siblings_filtered,
             "breadcrumb": breadcrumb,
             "sibling_documents": sibling_docs_filtered,
             "sibling_folders": siblings_folders,
