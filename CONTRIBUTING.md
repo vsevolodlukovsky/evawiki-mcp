@@ -46,5 +46,5 @@
 ## Releasing
 
 - Version is kept in `pyproject.toml` (SemVer).
-- Release: create a git tag `v0.1.0` (match version in pyproject.toml), push, then create a GitHub Release.
+- Release: create a git tag `v0.2.0` (match version in pyproject.toml), push, then create a GitHub Release.
 - Optionally: build wheel/sdist and publish to PyPI (e.g. via GitHub Action or manual `twine upload`).

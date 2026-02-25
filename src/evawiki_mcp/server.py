@@ -309,6 +309,207 @@ def evawiki_ping() -> Dict[str, Any]:
         _handle_eva_error(exc)
 
 
+# ---------------------------------------------------------------------------
+# Hierarchy / tree tools
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def evawiki_get_document_tree(
+    project_code: Optional[str] = None,
+    max_depth: int = 10,
+) -> Dict[str, Any]:
+    """
+    Build full document tree (folders + documents) for a project.
+
+    project_code — if given, scope to one project; otherwise all accessible projects.
+    max_depth — max nesting depth (default 10).
+
+    Returns a list of root nodes, each with nested children.
+    Node: {type: "folder"|"document", code, name, children: [...]}.
+    """
+    client = get_client()
+    try:
+        project_id: Optional[str] = None
+        if project_code:
+            pdata = client.call(
+                "CmfProject.get",
+                kwargs={"filter": ["code", "==", project_code]},
+                fields=["id", "code", "name"],
+            )
+            proj = pdata.get("result")
+            if not proj:
+                raise RuntimeError(f"Project with code {project_code} not found")
+            project_id = proj["id"]
+
+        tree = client.build_tree(project_id=project_id, max_depth=max_depth)
+        return {"tree": tree, "project_code": project_code}
+    except EvaApiError as exc:
+        _handle_eva_error(exc)
+
+
+@mcp.tool()
+def evawiki_list_sections(
+    project_code: Optional[str] = None,
+    limit: int = 200,
+    offset: int = 0,
+) -> Dict[str, Any]:
+    """
+    List all folders (sections) — flat list with parent info.
+
+    project_code — optional, scope to one project.
+    Returns [{code, name, parent_id, project_id, id}, ...].
+    """
+    client = get_client()
+    try:
+        project_id: Optional[str] = None
+        if project_code:
+            pdata = client.call(
+                "CmfProject.get",
+                kwargs={"filter": ["code", "==", project_code]},
+                fields=["id"],
+            )
+            proj = pdata.get("result")
+            if not proj:
+                raise RuntimeError(f"Project with code {project_code} not found")
+            project_id = proj["id"]
+
+        kwargs: Dict[str, Any] = {"slice": [offset, offset + limit]}
+        if project_id:
+            kwargs["filter"] = ["project_id", "==", project_id]
+
+        fields = ["code", "name", "parent_id", "project_id", "id"]
+        data = client.call("CmfFolder.list", kwargs=kwargs, fields=fields, no_meta=True)
+        items = [r for r in (data.get("result") or []) if r.get("_acl_obj") != "deny"]
+        return {"items": items, "count": len(items)}
+    except EvaApiError as exc:
+        _handle_eva_error(exc)
+
+
+@mcp.tool()
+def evawiki_get_section(code: str) -> Dict[str, Any]:
+    """
+    Get one folder (section) by code, with its direct children (sub-folders + documents).
+
+    Returns the folder info plus lists of child_folders and child_documents.
+    """
+    client = get_client()
+    try:
+        fdata = client.call(
+            "CmfFolder.get",
+            kwargs={"filter": ["code", "==", code]},
+            fields=["code", "name", "parent_id", "project_id", "id"],
+        )
+        folder = fdata.get("result")
+        if not folder:
+            raise RuntimeError(f"Folder with code {code} not found")
+        folder_id = folder["id"]
+
+        child_folders = client._list_all(
+            "CmfFolder.list",
+            ["code", "name", "parent_id", "id"],
+            extra_filter=["parent_id", "==", folder_id],
+        )
+        child_docs = client._list_all(
+            "CmfDocument.list",
+            ["code", "name", "parent_id", "id"],
+            extra_filter=["parent_id", "==", folder_id],
+        )
+
+        return {
+            "folder": folder,
+            "child_folders": child_folders,
+            "child_documents": child_docs,
+        }
+    except EvaApiError as exc:
+        _handle_eva_error(exc)
+
+
+@mcp.tool()
+def evawiki_move_document(doc_code: str, target_parent_id: str) -> Dict[str, Any]:
+    """
+    Move a document to another parent (folder, document, or project).
+
+    doc_code — code of the document to move (e.g. DOC-000066).
+    target_parent_id — full id of the new parent
+        (e.g. "CmfFolder:uuid..." or "CmfProject:uuid..." or "CmfDocument:uuid...").
+    """
+    client = get_client()
+    try:
+        doc_data = client.call(
+            "CmfDocument.get",
+            kwargs={"filter": ["code", "==", doc_code]},
+            fields=["id", "parent_id"],
+        )
+        doc = doc_data.get("result")
+        if not doc:
+            raise RuntimeError(f"Document with code {doc_code} not found")
+        doc_id = doc["id"]
+        old_parent = doc.get("parent_id")
+
+        client.call(
+            "CmfDocument.update",
+            args=[doc_id],
+            kwargs={"parent_id": target_parent_id},
+        )
+
+        return {
+            "doc_code": doc_code,
+            "doc_id": doc_id,
+            "old_parent_id": old_parent,
+            "new_parent_id": target_parent_id,
+        }
+    except EvaApiError as exc:
+        _handle_eva_error(exc)
+
+
+@mcp.tool()
+def evawiki_get_document_with_context(code: str) -> Dict[str, Any]:
+    """
+    Get document together with its breadcrumb path and sibling documents.
+
+    Returns:
+    - document: basic document fields
+    - breadcrumb: list from root project down to the document's parent
+    - siblings: other documents/folders sharing the same parent
+    """
+    client = get_client()
+    try:
+        doc_data = client.call(
+            "CmfDocument.get",
+            kwargs={"filter": ["code", "==", code]},
+            fields=["code", "name", "parent_id", "project_id", "id"],
+        )
+        doc = doc_data.get("result")
+        if not doc:
+            raise RuntimeError(f"Document with code {code} not found")
+
+        parent_id = doc.get("parent_id", "")
+        breadcrumb = client.get_breadcrumb(parent_id) if parent_id else []
+
+        siblings_docs = client._list_all(
+            "CmfDocument.list",
+            ["code", "name", "id"],
+            extra_filter=["parent_id", "==", parent_id],
+        ) if parent_id else []
+        siblings_folders = client._list_all(
+            "CmfFolder.list",
+            ["code", "name", "id"],
+            extra_filter=["parent_id", "==", parent_id],
+        ) if parent_id else []
+
+        sibling_docs_filtered = [s for s in siblings_docs if s.get("id") != doc["id"]]
+
+        return {
+            "document": doc,
+            "breadcrumb": breadcrumb,
+            "sibling_documents": sibling_docs_filtered,
+            "sibling_folders": siblings_folders,
+        }
+    except EvaApiError as exc:
+        _handle_eva_error(exc)
+
+
 def _parse_json_param(val: Optional[Union[str, Dict, List]]) -> Any:
     """Accept JSON string or already-parsed dict/list."""
     if val is None:
