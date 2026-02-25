@@ -168,58 +168,77 @@ class EvaWikiClient:
         flt = ["project_id", "==", project_id] if project_id else None
         return self._list_all("CmfDocument.list", f, extra_filter=flt)
 
+    def list_wiki_roots(
+        self,
+        project_id: Optional[str] = None,
+        fields: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Return root-level wiki tree nodes (tree_parent_id is null)."""
+        f = fields or ["code", "name", "id", "project_id"]
+        flt: Any = ["tree_parent_id", "==", None]
+        if project_id:
+            flt = {"and": [flt, ["project_id", "==", project_id]]}
+        return self._list_all("CmfDocument.list", f, extra_filter=flt)
+
+    def list_wiki_children(
+        self,
+        parent_id: str,
+        project_id: Optional[str] = None,
+        fields: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Return direct wiki tree children of *parent_id* (tree_parent_id == parent_id)."""
+        f = fields or ["code", "name", "id", "project_id"]
+        flt: Any = ["tree_parent_id", "==", parent_id]
+        if project_id:
+            flt = {"and": [flt, ["project_id", "==", project_id]]}
+        return self._list_all("CmfDocument.list", f, extra_filter=flt)
+
     def build_tree(
         self,
         project_id: Optional[str] = None,
         max_depth: int = 10,
     ) -> List[Dict[str, Any]]:
         """
-        Build a hierarchical tree for a project (or all projects).
+        Build wiki navigation tree using tree_parent_id top-down traversal.
+
+        Starts from root nodes (tree_parent_id == null), then recursively
+        fetches children via tree_parent_id filter for each branch node.
 
         Each node: {type, id, code, name, children: [...]}
+        At max_depth, children_count is returned instead of children list.
         """
-        folders = self.list_folders(project_id)
-        docs = self.list_documents_for_tree(project_id)
+        doc_fields = ["code", "name", "id", "project_id"]
 
-        nodes_by_id: Dict[str, Dict[str, Any]] = {}
-
-        for f in folders:
-            nodes_by_id[f["id"]] = {
-                "type": "folder",
-                "id": f["id"],
-                "code": f.get("code"),
-                "name": f.get("name"),
-                "parent_id": f.get("parent_id"),
-                "children": [],
-            }
-
-        for d in docs:
-            nodes_by_id[d["id"]] = {
-                "type": "document",
-                "id": d["id"],
-                "code": d.get("code"),
-                "name": d.get("name"),
-                "parent_id": d.get("parent_id"),
-                "children": [],
-            }
-
-        roots: List[Dict[str, Any]] = []
-        for node in nodes_by_id.values():
-            pid = node.get("parent_id")
-            if pid and pid in nodes_by_id:
-                nodes_by_id[pid]["children"].append(node)
+        def _fetch_children(parent_id: Optional[str], depth: int) -> List[Dict[str, Any]]:
+            if depth > max_depth:
+                return []
+            if parent_id is None:
+                nodes = self.list_wiki_roots(project_id=project_id, fields=doc_fields)
             else:
-                roots.append(node)
+                nodes = self.list_wiki_children(parent_id, project_id=project_id, fields=doc_fields)
 
-        def _prune(node: Dict[str, Any], depth: int) -> Dict[str, Any]:
-            result = {k: v for k, v in node.items() if k not in ("parent_id", "children")}
-            if depth < max_depth and node.get("children"):
-                result["children"] = [_prune(c, depth + 1) for c in node["children"]]
-            elif node.get("children"):
-                result["children_count"] = len(node["children"])
+            result = []
+            for node in nodes:
+                node_id = node.get("id", "")
+                entry: Dict[str, Any] = {
+                    "type": "document",
+                    "id": node_id,
+                    "code": node.get("code"),
+                    "name": node.get("name"),
+                }
+                if depth < max_depth:
+                    children = _fetch_children(node_id, depth + 1)
+                    if children:
+                        entry["children"] = children
+                else:
+                    # At max depth, probe for children existence with a small query
+                    probe = self.list_wiki_children(node_id, project_id=project_id, fields=["id"])
+                    if probe:
+                        entry["children_count"] = len(probe)
+                result.append(entry)
             return result
 
-        return [_prune(r, 0) for r in roots]
+        return _fetch_children(None, 0)
 
     def get_breadcrumb(self, node_id: str) -> List[Dict[str, str]]:
         """

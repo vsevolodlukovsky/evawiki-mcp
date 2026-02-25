@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1] - 2026-02-25
+
+### Fixed
+
+- `build_tree` now uses correct wiki navigation tree (`tree_parent_id`) instead of EVA object hierarchy (`parent_id`). Previously returned incorrect flat structure for documents with `parent_id == project_id`.
+
+### Added
+
+- `EvaWikiClient.list_wiki_roots(project_id)` — fetch root-level wiki tree nodes (`tree_parent_id == null`).
+- `EvaWikiClient.list_wiki_children(parent_id, project_id)` — fetch direct wiki children via `tree_parent_id` filter.
+- MCP tool `evawiki_get_wiki_children(node_id, project_code)` — navigate wiki tree node by node without loading the full tree.
+- `evawiki_get_section` now also returns `wiki_children` (via `tree_parent_id`) alongside existing `child_documents` (via `parent_id`).
+
 ## [0.2.0] - 2025-02-25
 
 ### Added

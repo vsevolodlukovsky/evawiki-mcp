@@ -389,9 +389,15 @@ def evawiki_list_sections(
 @mcp.tool()
 def evawiki_get_section(code: str) -> Dict[str, Any]:
     """
-    Get one folder (section) by code, with its direct children (sub-folders + documents).
+    Get one folder (section) by code, with its direct children.
 
-    Returns the folder info plus lists of child_folders and child_documents.
+    Returns the folder info plus:
+    - child_folders: sub-folders via parent_id
+    - child_documents: documents via parent_id (EVA object hierarchy)
+    - wiki_children: documents via tree_parent_id (wiki navigation tree)
+
+    Note: wiki_children reflects the true wiki tree structure and may differ
+    from child_documents which uses the EVA object hierarchy (parent_id).
     """
     client = get_client()
     try:
@@ -415,12 +421,57 @@ def evawiki_get_section(code: str) -> Dict[str, Any]:
             ["code", "name", "parent_id", "id"],
             extra_filter=["parent_id", "==", folder_id],
         )
+        wiki_children = client.list_wiki_children(
+            folder_id,
+            fields=["code", "name", "id", "project_id"],
+        )
 
         return {
             "folder": folder,
             "child_folders": child_folders,
             "child_documents": child_docs,
+            "wiki_children": wiki_children,
         }
+    except EvaApiError as exc:
+        _handle_eva_error(exc)
+
+
+@mcp.tool()
+def evawiki_get_wiki_children(
+    node_id: str,
+    project_code: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Get direct wiki tree children of any node by its full id.
+
+    Uses tree_parent_id filter — returns the true wiki navigation children,
+    which may differ from EVA object children (parent_id).
+
+    node_id — full entity id, e.g. "CmfDocument:uuid..." or "CmfFolder:uuid...".
+    project_code — optional, scope results to one project.
+
+    Returns list of child nodes: [{id, code, name, project_id}, ...].
+    """
+    client = get_client()
+    try:
+        project_id: Optional[str] = None
+        if project_code:
+            pdata = client.call(
+                "CmfProject.get",
+                kwargs={"filter": ["code", "==", project_code]},
+                fields=["id"],
+            )
+            proj = pdata.get("result")
+            if not proj:
+                raise RuntimeError(f"Project with code {project_code} not found")
+            project_id = proj["id"]
+
+        children = client.list_wiki_children(
+            node_id,
+            project_id=project_id,
+            fields=["code", "name", "id", "project_id"],
+        )
+        return {"node_id": node_id, "children": children, "count": len(children)}
     except EvaApiError as exc:
         _handle_eva_error(exc)
 
@@ -472,6 +523,11 @@ def evawiki_get_document_with_context(code: str) -> Dict[str, Any]:
     - document: basic document fields
     - breadcrumb: list from root project down to the document's parent
     - siblings: other documents/folders sharing the same parent
+
+    Note: breadcrumb and siblings use the EVA object hierarchy (parent_id).
+    The wiki navigation tree uses tree_parent_id, which is not retrievable
+    via the API (filter-only field). Use evawiki_get_wiki_children for
+    true wiki tree traversal.
     """
     client = get_client()
     try:
