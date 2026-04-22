@@ -61,6 +61,8 @@ Alternative (without installing the package): `"command": "python", "args": ["-m
 
 The server supports two transports: **stdio** (default, for local MCP clients) and **streamable-http** (for running as a network service in Docker or a VM).
 
+> **Heads up — stdio vs HTTP env vars.** In **stdio** mode the MCP client (Cursor, etc.) starts the server process itself, so the `env` block from the client config is propagated to the server. In **HTTP** mode the server is a separate process (typically a Docker container), and the client only talks to it via `url`. The client-side `env` block is **ignored**. `EVAWIKI_API_URL` / `EVAWIKI_API_TOKEN` must be set on the server side — via `.env` for Compose, `--env-file` for `docker run`, or exported shell env for a bare `evawiki-mcp --transport http`. If they are missing, the server logs a `[WARN]` to stderr on startup and every tool call fails with `EVAWIKI_API_URL is not set`.
+
 #### Quick start with Docker Compose
 
 ```bash
@@ -229,6 +231,8 @@ pipx install evawiki-mcp
 ## Docker / HTTP‑режим
 
 Сервер поддерживает два транспорта: **stdio** (по умолчанию, для локальных MCP‑клиентов) и **streamable‑http** (для работы как сетевой сервис в Docker или на VM).
+
+> **Важно — env переменные в stdio vs HTTP.** В **stdio** клиент (Cursor и т.п.) сам запускает процесс сервера, поэтому блок `env` из конфига клиента пробрасывается в сервер. В **HTTP** сервер — это отдельный процесс (обычно Docker‑контейнер), клиент ходит к нему только по `url`. Блок `env` в клиент‑конфиге **игнорируется**. `EVAWIKI_API_URL` / `EVAWIKI_API_TOKEN` нужно задавать на стороне сервера: через `.env` (Compose), `--env-file` (`docker run`) или обычный экспорт для `evawiki-mcp --transport http`. Если переменные не заданы, сервер печатает `[WARN]` в stderr при старте, а каждый tool‑call падает с `EVAWIKI_API_URL is not set`.
 
 ### Быстрый старт с Docker Compose
 

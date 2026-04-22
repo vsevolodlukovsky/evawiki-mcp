@@ -6,7 +6,7 @@ import argparse
 import os
 import sys
 
-from .server import mcp
+from .server import mcp, warn_missing_env
 
 TRANSPORTS = ("stdio", "http")
 
@@ -66,6 +66,8 @@ def main() -> int:
         help="HTTP endpoint path (default: /mcp, env MCP_PATH)",
     )
     args = parser.parse_args()
+
+    warn_missing_env(args.transport)
 
     if args.transport == "http":
         mcp.settings.host = args.host

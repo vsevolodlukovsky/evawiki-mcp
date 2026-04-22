@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from typing import Any, Dict, List, Optional, Union
 
 from mcp.server.fastmcp import FastMCP
@@ -10,6 +11,34 @@ from .evawiki_client import EvaApiError, EvaWikiClient
 
 
 mcp = FastMCP("EVA Wiki MCP")
+
+
+def warn_missing_env(transport: str = "stdio") -> None:
+    """
+    Log a visible warning to stderr if required EVA env vars are missing.
+
+    Called at startup so the problem is obvious in `docker logs` instead of
+    surfacing only on the first tool call. In HTTP/Docker mode the MCP client's
+    own `env` block is ignored — env vars must come from the server-side
+    environment (`.env`, `--env-file`, etc.).
+    """
+    missing = [
+        name for name in ("EVAWIKI_API_URL", "EVAWIKI_API_TOKEN")
+        if not os.environ.get(name)
+    ]
+    if not missing:
+        return
+    print(
+        f"[WARN] Missing env: {', '.join(missing)} — EVA tool calls will fail.",
+        file=sys.stderr,
+    )
+    if transport == "http":
+        print(
+            "[WARN] HTTP mode: set these on the server side "
+            "(docker compose .env / --env-file). The MCP client's "
+            '"env" block is ignored for HTTP transport.',
+            file=sys.stderr,
+        )
 
 
 def _env_bool(name: str, default: bool) -> bool:
