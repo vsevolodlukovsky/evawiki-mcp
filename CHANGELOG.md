@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-04-22
+
+### Added
+
+- `streamable-http` transport alongside stdio. CLI accepts `--transport {stdio,http}`, `--host`, `--port`, `--path` with env fallbacks `MCP_TRANSPORT`, `MCP_HOST`, `MCP_PORT`, `MCP_PATH`. Default endpoint is `/mcp`.
+- `Dockerfile` (python:3.12-slim-bookworm), non-root user, socket-based healthcheck that honors `MCP_PORT`. Image defaults to HTTP on `0.0.0.0:8000/mcp`.
+- `docker-compose.yml` bound to `127.0.0.1:8000` for safe local defaults, `.env`-driven configuration, `.env.example` template, `.dockerignore`.
+- README sections (EN + RU) covering Docker Compose / `docker run` / HTTP-without-Docker workflows, MCP client HTTP config, CLI options table, and security notes.
+
+### Changed
+
+- Default transport remains `stdio` — backward compatible with existing `pipx`/`pip` installations.
+- `MCP_TRANSPORT` and `MCP_PORT` env values are validated on startup with clear error messages (invalid transport no longer silently falls back to stdio; invalid port no longer crashes with a bare `ValueError`).
+
 ## [0.2.1] - 2026-02-25
 
 ### Fixed
