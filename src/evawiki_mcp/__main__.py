@@ -8,9 +8,34 @@ import sys
 
 from .server import mcp
 
+TRANSPORTS = ("stdio", "http")
+
 
 def _env(name: str, default: str) -> str:
     return os.environ.get(name, default)
+
+
+def _env_transport(default: str = "stdio") -> str:
+    raw = os.environ.get("MCP_TRANSPORT", default)
+    value = raw.strip().lower()
+    if value not in TRANSPORTS:
+        raise SystemExit(
+            f"Invalid MCP_TRANSPORT={raw!r}: expected one of {', '.join(TRANSPORTS)}"
+        )
+    return value
+
+
+def _env_port(default: int = 8000) -> int:
+    raw = os.environ.get("MCP_PORT")
+    if raw is None or raw == "":
+        return default
+    try:
+        port = int(raw)
+    except ValueError:
+        raise SystemExit(f"Invalid MCP_PORT={raw!r}: must be an integer") from None
+    if not 1 <= port <= 65535:
+        raise SystemExit(f"Invalid MCP_PORT={port}: must be in 1..65535")
+    return port
 
 
 def main() -> int:
@@ -20,8 +45,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--transport",
-        choices=["stdio", "http"],
-        default=_env("MCP_TRANSPORT", "stdio"),
+        choices=list(TRANSPORTS),
+        default=_env_transport(),
         help="Transport mode (default: stdio, env MCP_TRANSPORT)",
     )
     parser.add_argument(
@@ -32,7 +57,7 @@ def main() -> int:
     parser.add_argument(
         "--port",
         type=int,
-        default=int(_env("MCP_PORT", "8000")),
+        default=_env_port(),
         help="HTTP listen port (default: 8000, env MCP_PORT)",
     )
     parser.add_argument(

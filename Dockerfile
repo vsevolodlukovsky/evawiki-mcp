@@ -21,7 +21,7 @@ ENV MCP_TRANSPORT=http \
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import socket,sys; s=socket.create_connection(('127.0.0.1',8000),2); s.close()" || exit 1
+    CMD python -c "import os,socket; socket.create_connection(('127.0.0.1', int(os.environ.get('MCP_PORT','8000'))), 2).close()" || exit 1
 
 USER app
 
