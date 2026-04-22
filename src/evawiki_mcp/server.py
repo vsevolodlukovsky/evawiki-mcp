@@ -107,9 +107,8 @@ def evawiki_get_document_text(code: str) -> Dict[str, Any]:
     """
     client = get_client()
     try:
-        kwargs = {"filter": ["code", "==", code], "fields": ["text"]}
-        # fields can be passed via kwargs as in EVA examples
-        data = client.call("CmfDocument.get", kwargs=kwargs)
+        kwargs = {"filter": ["code", "==", code]}
+        data = client.call("CmfDocument.get", kwargs=kwargs, fields=["text"])
         result = data.get("result") or {}
         return {"code": code, "text": result.get("text")}
     except EvaApiError as exc:

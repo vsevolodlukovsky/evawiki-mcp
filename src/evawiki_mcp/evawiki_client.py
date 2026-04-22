@@ -51,19 +51,23 @@ class EvaWikiClient:
             "callid": str(uuid.uuid4()),
         }
 
+        # EVA expects filter/fields/flags/no_meta to live inside kwargs.
+        # Keeping a top-level `kwargs` key (even if empty) and merging named
+        # options into it makes the call shape match the EVA API contract.
+        merged_kwargs: Dict[str, Any] = dict(kwargs) if kwargs else {}
+        if fields is not None and "fields" not in merged_kwargs:
+            merged_kwargs["fields"] = fields
+        if filter is not None and "filter" not in merged_kwargs:
+            merged_kwargs["filter"] = filter
+        if flags is not None and "flags" not in merged_kwargs:
+            merged_kwargs["flags"] = flags
+        if no_meta is not None and "no_meta" not in merged_kwargs:
+            merged_kwargs["no_meta"] = no_meta
+
         if args is not None:
             payload["args"] = args
-        if kwargs is not None:
-            # EVA docs use kwargs for named arguments
-            payload["kwargs"] = kwargs
-        if fields is not None:
-            payload["fields"] = fields
-        if filter is not None:
-            payload["filter"] = filter
-        if flags is not None:
-            payload["flags"] = flags
-        if no_meta is not None:
-            payload["no_meta"] = no_meta
+        if merged_kwargs:
+            payload["kwargs"] = merged_kwargs
 
         return payload
 

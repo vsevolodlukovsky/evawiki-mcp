@@ -29,7 +29,7 @@ def test_build_payload_with_args():
 
 
 def test_build_payload_with_fields_and_no_meta():
-    """_build_payload includes fields and no_meta when provided."""
+    """_build_payload merges fields/no_meta into kwargs (EVA API contract)."""
     client = EvaWikiClient(base_url="https://x/api/", token="t")
     payload = client._build_payload(
         "CmfDocument.list",
@@ -37,8 +37,11 @@ def test_build_payload_with_fields_and_no_meta():
         fields=["code", "name"],
         no_meta=True,
     )
-    assert payload["fields"] == ["code", "name"]
-    assert payload["no_meta"] is True
+    assert payload["kwargs"]["fields"] == ["code", "name"]
+    assert payload["kwargs"]["no_meta"] is True
+    assert payload["kwargs"]["slice"] == [0, 10]
+    assert "fields" not in payload
+    assert "no_meta" not in payload
 
 
 def test_eva_api_error():
