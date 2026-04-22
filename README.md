@@ -57,6 +57,64 @@ Alternative (without installing the package): `"command": "python", "args": ["-m
 - **EVAWIKI_API_URL / EVAWIKI_API_TOKEN missing:** the server will fail on the first tool call if they are not set — configure them in your MCP client.
 - **Stdio:** the server communicates over stdin/stdout; do not run it interactively and type into the same terminal.
 
+### Docker / HTTP mode
+
+The server supports two transports: **stdio** (default, for local MCP clients) and **streamable-http** (for running as a network service in Docker or a VM).
+
+#### Quick start with Docker Compose
+
+```bash
+cp .env.example .env
+# edit .env — set EVAWIKI_API_URL and EVAWIKI_API_TOKEN
+docker compose up -d --build
+```
+
+The server listens on `http://localhost:8000/mcp`.
+
+#### Quick start with docker run
+
+```bash
+docker build -t evawiki-mcp .
+docker run --rm -p 127.0.0.1:8000:8000 --env-file .env evawiki-mcp
+```
+
+#### HTTP mode without Docker
+
+```bash
+evawiki-mcp --transport http
+# or via env vars:
+MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8000 evawiki-mcp
+```
+
+#### MCP client config (HTTP)
+
+```json
+{
+  "mcpServers": {
+    "evawiki": {
+      "url": "http://localhost:8000/mcp"
+    }
+  }
+}
+```
+
+#### CLI options
+
+| Flag | Env var | Default | Description |
+|------|---------|---------|-------------|
+| `--transport` | `MCP_TRANSPORT` | `stdio` | `stdio` or `http` |
+| `--host` | `MCP_HOST` | `127.0.0.1` | Listen address (HTTP mode) |
+| `--port` | `MCP_PORT` | `8000` | Listen port (HTTP mode) |
+| `--path` | `MCP_PATH` | `/mcp` | HTTP endpoint path |
+
+#### Security notes
+
+The HTTP transport has **no built-in authentication**. Do not expose it to the public internet directly. Recommended options:
+
+- Bind to `127.0.0.1` and access via SSH tunnel.
+- Place behind a reverse proxy (nginx / traefik) with basic auth or OAuth.
+- For single-user local use, prefer stdio mode.
+
 ---
 
 ## Features
@@ -167,6 +225,64 @@ pipx install evawiki-mcp
 ## Пример client‑конфига MCP (Cursor / OpenAI Agents)
 
 Используйте команду `evawiki-mcp` и переменные окружения. Пример в [examples/mcp.json](examples/mcp.json).
+
+## Docker / HTTP‑режим
+
+Сервер поддерживает два транспорта: **stdio** (по умолчанию, для локальных MCP‑клиентов) и **streamable‑http** (для работы как сетевой сервис в Docker или на VM).
+
+### Быстрый старт с Docker Compose
+
+```bash
+cp .env.example .env
+# отредактируйте .env — укажите EVAWIKI_API_URL и EVAWIKI_API_TOKEN
+docker compose up -d --build
+```
+
+Сервер слушает `http://localhost:8000/mcp`.
+
+### Быстрый старт с docker run
+
+```bash
+docker build -t evawiki-mcp .
+docker run --rm -p 127.0.0.1:8000:8000 --env-file .env evawiki-mcp
+```
+
+### HTTP‑режим без Docker
+
+```bash
+evawiki-mcp --transport http
+# или через переменные окружения:
+MCP_TRANSPORT=http MCP_HOST=127.0.0.1 MCP_PORT=8000 evawiki-mcp
+```
+
+### Конфиг MCP‑клиента (HTTP)
+
+```json
+{
+  "mcpServers": {
+    "evawiki": {
+      "url": "http://localhost:8000/mcp"
+    }
+  }
+}
+```
+
+### Параметры CLI
+
+| Флаг | Переменная | По умолчанию | Описание |
+|------|------------|--------------|----------|
+| `--transport` | `MCP_TRANSPORT` | `stdio` | `stdio` или `http` |
+| `--host` | `MCP_HOST` | `127.0.0.1` | Адрес прослушивания (HTTP) |
+| `--port` | `MCP_PORT` | `8000` | Порт (HTTP) |
+| `--path` | `MCP_PATH` | `/mcp` | Путь HTTP‑эндпоинта |
+
+### Безопасность
+
+HTTP‑транспорт **не имеет встроенной авторизации**. Не выставляйте его в открытый интернет напрямую. Рекомендации:
+
+- Слушайте на `127.0.0.1` и ходите через SSH‑туннель.
+- Ставьте reverse‑proxy (nginx / traefik) с basic auth или OAuth.
+- Для одного пользователя локально — используйте stdio.
 
 ## Структура кода
 
